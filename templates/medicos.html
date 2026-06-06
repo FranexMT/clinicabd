@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Medicos y Especialidades</div>
+<div class="page-subtitle">Nodo 1 &mdash; Administracion</div>
+
+<!-- Formulario -->
+<div class="card">
+  <div class="card-header">Registrar nuevo medico</div>
+  <div class="card-body">
+    <form method="POST" action="/medicos/agregar">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" name="nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido paterno</label>
+          <input type="text" name="apellido_p" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido materno</label>
+          <input type="text" name="apellido_m">
+        </div>
+        <div class="form-group">
+          <label>Cedula profesional</label>
+          <input type="text" name="cedula" required>
+        </div>
+        <div class="form-group">
+          <label>Telefono</label>
+          <input type="text" name="telefono">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email">
+        </div>
+        <div class="form-group">
+          <label>Especialidad</label>
+          <select name="id_especialidad" required>
+            {% for e in especialidades %}
+            <option value="{{ e.id_especialidad }}">{{ e.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Turno</label>
+          <select name="turno">
+            <option value="matutino">Matutino</option>
+            <option value="vespertino">Vespertino</option>
+            <option value="nocturno">Nocturno</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-purple">&#x2B; Registrar medico</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tabla -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #8b5cf6;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#ede9fe; color:#5b21b6;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 1</span>
+      Lista de medicos
+    </span>
+    <span class="ch-sub">{{ medicos|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if medicos %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Nombre</th><th>Cedula</th>
+          <th>Especialidad</th><th>Turno</th><th>Telefono</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicos %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">{{ m.id_medico }}</td>
+          <td style="font-weight:500;">Dr. {{ m.nombre }} {{ m.apellido_p }}</td>
+          <td style="font-family:monospace; font-size:.82rem; color:#64748b;">{{ m.cedula }}</td>
+          <td>{{ m.especialidad }}</td>
+          <td>
+            <span class="badge badge-{{ 'mat' if m.turno=='matutino' else ('ves' if m.turno=='vespertino' else 'noc') }}">
+              {{ m.turno }}
+            </span>
+          </td>
+          <td style="color:#64748b;">{{ m.telefono or '&#x2014;' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 1 no disponible o sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Citas</div>
+<div class="page-subtitle">Fragmentacion horizontal (COM-MIN) &mdash; 5 fragmentos distribuidos</div>
+
+<!-- Formulario -->
+<div class="card">
+  <div class="card-header">Registrar nueva cita</div>
+  <div class="card-body">
+    <form method="POST" action="/citas/agregar">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ID Paciente</label>
+          <input type="number" name="id_paciente" required min="1">
+        </div>
+        <div class="form-group">
+          <label>ID Medico</label>
+          <input type="number" name="id_medico" required min="1">
+        </div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" name="fecha_cita" required>
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input type="time" name="hora_cita" required>
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <input type="text" name="motivo">
+        </div>
+        <div class="form-group">
+          <label>Estatus</label>
+          <select name="estatus" required>
+            <option value="programada">Programada</option>
+            <option value="completada">Completada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-success">&#x2B; Agregar cita</button>
+        <span class="form-hint">El sistema asigna el nodo automaticamente segun estatus y fecha.</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Fragmentos -->
+{% set frags = [
+  (f1, 1, 'CITA_F1',  'Programadas 1er semestre 2026', '#2563eb', '#dbeafe', '#1e40af'),
+  (f2, 2, 'CITA_F2',  'Programadas 2do semestre 2026', '#10b981', '#d1fae5', '#065f46'),
+  (f3, 3, 'CITA_F3',  'Completadas 1er semestre 2025', '#8b5cf6', '#ede9fe', '#5b21b6'),
+  (f4, 4, 'CITA_F4',  'Completadas 2do semestre 2025', '#f97316', '#ffedd5', '#9a3412'),
+  (f5, 5, 'CITA_F5',  'Canceladas',                    '#ef4444', '#fee2e2', '#991b1b')
+] %}
+
+{% for frag, nid, fname, label, color, bg, tc in frags %}
+<div class="card">
+  <div class="card-header" style="border-left:4px solid {{ color }};">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:{{ bg }}; color:{{ tc }};
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO {{ nid }}</span>
+      {{ fname }} &mdash; {{ label }}
+    </span>
+    <span class="ch-sub">{{ frag|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if frag %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Paciente</th><th>Medico</th>
+          <th>Fecha</th><th>Hora</th><th>Motivo</th><th>Estatus</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in frag %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">#{{ c.id_cita }}</td>
+          <td>{{ c.id_paciente }}</td>
+          <td>{{ c.id_medico }}</td>
+          <td style="font-weight:500;">{{ c.fecha_cita }}</td>
+          <td>{{ c.hora_cita }}</td>
+          <td style="color:#64748b;">{{ c.motivo or '&#x2014;' }}</td>
+          <td>
+            <span class="badge badge-{{ 'prog' if c.estatus=='programada' else ('comp' if c.estatus=='completada' else 'canc') }}">
+              {{ c.estatus }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo {{ nid }} no disponible o sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

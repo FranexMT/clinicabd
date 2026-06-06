@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Pacientes</div>
+<div class="page-subtitle">Fragmentacion vertical &mdash; 3 fragmentos distribuidos</div>
+
+<!-- Formulario -->
+<div class="card">
+  <div class="card-header">
+    Registrar nuevo paciente
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/pacientes/agregar">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ID Paciente</label>
+          <input type="number" name="id_paciente" required min="1">
+        </div>
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" name="nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido paterno</label>
+          <input type="text" name="apellido_p" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido materno</label>
+          <input type="text" name="apellido_m">
+        </div>
+        <div class="form-group">
+          <label>Telefono</label>
+          <input type="text" name="telefono">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email">
+        </div>
+        <div class="form-group">
+          <label>Fecha de nacimiento</label>
+          <input type="date" name="fecha_nac" required>
+        </div>
+        <div class="form-group">
+          <label>Sexo</label>
+          <select name="sexo" required>
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipo de sangre</label>
+          <select name="tipo_sangre">
+            <option value="">&#x2014;</option>
+            {% for t in ['O+','O-','A+','A-','B+','B-','AB+','AB-'] %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">&#x2B; Registrar paciente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Fragmento V1 -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #2563eb;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#dbeafe; color:#1e40af;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 1</span>
+      PACIENTE_V1 &mdash; Datos de contacto
+    </span>
+    <span class="ch-sub">{{ v1|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if v1 %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Nombre</th><th>Ap. Paterno</th>
+          <th>Telefono</th><th>Email</th><th>Activo</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in v1 %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">{{ p.id_paciente }}</td>
+          <td style="font-weight:500;">{{ p.nombre }}</td>
+          <td>{{ p.apellido_p }}</td>
+          <td>{{ p.telefono or '&#x2014;' }}</td>
+          <td style="color:#64748b;">{{ p.email or '&#x2014;' }}</td>
+          <td>
+            {% if p.activo %}
+            <span style="color:#065f46; font-weight:700;">&#x2713;</span>
+            {% else %}
+            <span style="color:#991b1b; font-weight:700;">&#x2717;</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="POST" action="/pacientes/eliminar/{{ p.id_paciente }}"
+                  onsubmit="return confirm('Eliminar paciente #{{ p.id_paciente }} de los 3 nodos?')">
+              <button class="btn btn-danger btn-sm">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 1 no disponible o sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Fragmento V2 -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #10b981;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#d1fae5; color:#065f46;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 2</span>
+      PACIENTE_V2 &mdash; Datos clinicos
+    </span>
+    <span class="ch-sub">{{ v2|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if v2 %}
+    <table>
+      <thead>
+        <tr><th>#</th><th>Nombre</th><th>Fecha nac.</th><th>Sexo</th><th>Tipo sangre</th></tr>
+      </thead>
+      <tbody>
+        {% for p in v2 %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">{{ p.id_paciente }}</td>
+          <td style="font-weight:500;">{{ p.nombre }} {{ p.apellido_p }}</td>
+          <td>{{ p.fecha_nac }}</td>
+          <td>{{ 'Masculino' if p.sexo=='M' else 'Femenino' }}</td>
+          <td>
+            {% if p.tipo_sangre %}
+            <span style="font-weight:600; background:#fee2e2; color:#991b1b;
+                         padding:.1rem .45rem; border-radius:4px; font-size:.8rem;">
+              {{ p.tipo_sangre }}
+            </span>
+            {% else %}&#x2014;{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 2 no disponible o sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Fragmento V3 -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #ef4444;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#fee2e2; color:#991b1b;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 5</span>
+      PACIENTE_V3 &mdash; Datos estadisticos
+    </span>
+    <span class="ch-sub">{{ v3|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if v3 %}
+    <table>
+      <thead>
+        <tr><th>#</th><th>Sexo</th><th>Tipo sangre</th><th>Fecha registro</th><th>Activo</th></tr>
+      </thead>
+      <tbody>
+        {% for p in v3 %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">{{ p.id_paciente }}</td>
+          <td>{{ 'Masculino' if p.sexo=='M' else 'Femenino' }}</td>
+          <td>
+            {% if p.tipo_sangre %}
+            <span style="font-weight:600; background:#fee2e2; color:#991b1b;
+                         padding:.1rem .45rem; border-radius:4px; font-size:.8rem;">
+              {{ p.tipo_sangre }}
+            </span>
+            {% else %}&#x2014;{% endif %}
+          </td>
+          <td>{{ p.fecha_registro }}</td>
+          <td>
+            {% if p.activo %}
+            <span style="color:#065f46; font-weight:700;">&#x2713;</span>
+            {% else %}
+            <span style="color:#991b1b; font-weight:700;">&#x2717;</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 5 no disponible o sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

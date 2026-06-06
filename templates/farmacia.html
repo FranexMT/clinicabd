@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Farmacia</div>
+<div class="page-subtitle">Nodo 3 &mdash; Inventario de medicamentos y dispensacion</div>
+
+<!-- Recetas pendientes -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #f59e0b;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#fef3c7; color:#92400e;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 3</span>
+      Recetas pendientes de dispensar
+    </span>
+    <span class="ch-sub">{{ pendientes|length }} pendientes</span>
+  </div>
+  <div class="table-wrap">
+    {% if pendientes %}
+    <table>
+      <thead>
+        <tr>
+          <th>Detalle</th><th>Receta</th><th>Medicamento</th>
+          <th>Presentacion</th><th>Cantidad</th><th>Dias</th><th>Accion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in pendientes %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">#{{ r.id_detalle }}</td>
+          <td>#{{ r.id_receta }}</td>
+          <td style="font-weight:500;">{{ r.medicamento }}</td>
+          <td style="color:#64748b; font-size:.82rem;">{{ r.presentacion }}</td>
+          <td style="font-weight:600;">{{ r.cantidad }}</td>
+          <td>{{ r.duracion_dias or '&#x2014;' }}</td>
+          <td>
+            <form method="POST" action="/farmacia/dispensar/{{ r.id_detalle }}">
+              <button class="btn btn-success btn-sm">&#x2713; Dispensar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x2705;</span>Sin recetas pendientes de dispensar.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Inventario -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #f59e0b;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#fef3c7; color:#92400e;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 3</span>
+      Inventario de medicamentos
+    </span>
+    <span class="ch-sub">{{ medicamentos|length }} productos</span>
+  </div>
+  <div class="table-wrap">
+    {% if medicamentos %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Nombre</th><th>Presentacion</th>
+          <th>Dosis estandar</th><th>Stock</th><th>Precio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicamentos %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">{{ m.id_medicamento }}</td>
+          <td style="font-weight:500;">{{ m.nombre }}</td>
+          <td style="color:#64748b; font-size:.82rem;">{{ m.presentacion }}</td>
+          <td style="color:#64748b; font-size:.82rem;">{{ m.dosis_std or '&#x2014;' }}</td>
+          <td>
+            {% if m.stock < 20 %}
+            <span style="display:inline-flex; align-items:center; gap:.3rem;
+                         font-weight:700; color:#991b1b;">
+              <span style="font-size:.8rem;">&#x26A0;</span> {{ m.stock }}
+            </span>
+            {% else %}
+            <span style="font-weight:600; color:#065f46;">{{ m.stock }}</span>
+            {% endif %}
+          </td>
+          <td style="font-weight:600;">${{ "%.2f"|format(m.precio) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 3 no disponible o sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

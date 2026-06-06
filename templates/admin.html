@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Administracion</div>
+<div class="page-subtitle">Nodo 4 &mdash; Facturacion y registro de pagos</div>
+
+<!-- Facturas -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #ef4444;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#fee2e2; color:#991b1b;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 4</span>
+      Facturas
+    </span>
+    <span class="ch-sub">{{ facturas|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if facturas %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Paciente</th><th>Fecha</th>
+          <th>Subtotal</th><th>IVA</th><th>Total</th>
+          <th>Estatus</th><th>Accion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in facturas %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">#{{ f.id_factura }}</td>
+          <td>Paciente #{{ f.id_paciente }}</td>
+          <td>{{ f.fecha_emision }}</td>
+          <td style="color:#64748b;">${{ "%.2f"|format(f.subtotal) }}</td>
+          <td style="color:#64748b;">${{ "%.2f"|format(f.iva) }}</td>
+          <td style="font-weight:700;">${{ "%.2f"|format(f.total) }}</td>
+          <td>
+            <span class="badge badge-{{ 'pago' if f.estatus_pago=='pagado' else ('canc' if f.estatus_pago=='cancelado' else 'pend') }}">
+              {{ f.estatus_pago }}
+            </span>
+          </td>
+          <td>
+            {% if f.estatus_pago == 'pendiente' %}
+            <form method="POST" action="/admin/pagar/{{ f.id_factura }}"
+                  style="display:flex; gap:.4rem; align-items:center;">
+              <input type="number" name="monto" step="0.01"
+                     value="{{ f.total }}"
+                     style="width:90px; font-size:.78rem; padding:.28rem .4rem;">
+              <select name="metodo_pago" style="font-size:.78rem; padding:.28rem .4rem;">
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+              </select>
+              <button class="btn btn-success btn-sm">Registrar pago</button>
+            </form>
+            {% else %}
+            <span style="color:#94a3b8; font-size:.8rem;">&#x2014;</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 4 no disponible o sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Pagos -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #ef4444;">
+    <span>
+      <span style="font-size:.7rem; font-weight:700; background:#fee2e2; color:#991b1b;
+                   padding:.12rem .5rem; border-radius:4px; margin-right:.5rem;">NODO 4</span>
+      Pagos registrados
+    </span>
+    <span class="ch-sub">{{ pagos|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if pagos %}
+    <table>
+      <thead>
+        <tr><th>ID Pago</th><th>Factura</th><th>Fecha</th><th>Monto</th><th>Metodo</th></tr>
+      </thead>
+      <tbody>
+        {% for p in pagos %}
+        <tr>
+          <td style="font-weight:600; color:#64748b;">#{{ p.id_pago }}</td>
+          <td>Factura #{{ p.id_factura }}</td>
+          <td>{{ p.fecha_pago }}</td>
+          <td style="font-weight:700;">${{ "%.2f"|format(p.monto) }}</td>
+          <td>
+            <span style="font-size:.8rem; background:#f1f5f9; color:#475569;
+                         padding:.12rem .45rem; border-radius:4px; font-weight:500;">
+              {{ p.metodo_pago }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4B3;</span>Sin pagos registrados.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
