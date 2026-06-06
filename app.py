@@ -1,6 +1,6 @@
 # app.py
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from db import query, execute, ping_all
+from db import query, execute, ping, ping_all
 from config import NODOS
 
 app = Flask(__name__)
