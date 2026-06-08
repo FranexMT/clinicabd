@@ -450,6 +450,9 @@ def reportes():
                COUNT(*) AS nuevos
         FROM PACIENTE_V3 GROUP BY anio, mes ORDER BY anio, mes
     """)
+    # Datos para CRUD
+    v3_list = query(5, "SELECT * FROM PACIENTE_V3 ORDER BY id_paciente")
+    f5_list = query(5, "SELECT * FROM CITA_F5 ORDER BY id_cita")
     estado = estado_nodos()
     return render_template("reportes.html",
                            demografia_sangre=demografia_sangre,
@@ -457,7 +460,51 @@ def reportes():
                            cancelaciones_mes=cancelaciones_mes,
                            top_canceladores=top_canceladores,
                            crecimiento=crecimiento,
+                           v3_list=v3_list, f5_list=f5_list,
                            estado=estado, nodos=NODOS)
+
+# ─── PACIENTE_V3 CRUD (Nodo 5) ───
+@app.route("/reportes/v3/agregar", methods=["POST"])
+def v3_agregar():
+    f = request.form
+    ok, err = execute(5,
+        "INSERT INTO PACIENTE_V3 (id_paciente, sexo, tipo_sangre, fecha_registro, activo) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (f["id_paciente"], f["sexo"], f.get("tipo_sangre",""), f["fecha_registro"], int(f.get("activo",1))))
+    flash("✓ Paciente V3 registrado" if ok else f"✗ Error: {err}", "success" if ok else "danger")
+    return redirect(url_for("reportes"))
+
+@app.route("/reportes/v3/editar/<int:pid>", methods=["POST"])
+def v3_editar(pid):
+    f = request.form
+    ok, err = execute(5,
+        "UPDATE PACIENTE_V3 SET sexo=%s, tipo_sangre=%s, fecha_registro=%s, activo=%s WHERE id_paciente=%s",
+        (f["sexo"], f.get("tipo_sangre",""), f["fecha_registro"], int(f.get("activo",1)), pid))
+    flash("✓ Paciente V3 actualizado" if ok else f"✗ Error: {err}", "success" if ok else "danger")
+    return redirect(url_for("reportes"))
+
+@app.route("/reportes/v3/eliminar/<int:pid>", methods=["POST"])
+def v3_eliminar(pid):
+    ok, err = execute(5, "DELETE FROM PACIENTE_V3 WHERE id_paciente=%s", (pid,))
+    flash("✓ Paciente V3 eliminado" if ok else f"✗ Error: {err}", "success" if ok else "danger")
+    return redirect(url_for("reportes"))
+
+# ─── CITA_F5 CRUD (Nodo 5) ───
+@app.route("/reportes/f5/agregar", methods=["POST"])
+def f5_agregar():
+    f = request.form
+    ok, err = execute(5,
+        "INSERT INTO CITA_F5 (id_paciente, id_medico, fecha_cita, hora_cita, motivo, estatus) "
+        "VALUES (%s, %s, %s, %s, %s, 'cancelada')",
+        (f["id_paciente"], f["id_medico"], f["fecha_cita"], f["hora_cita"], f.get("motivo","")))
+    flash("✓ Cita cancelada registrada" if ok else f"✗ Error: {err}", "success" if ok else "danger")
+    return redirect(url_for("reportes"))
+
+@app.route("/reportes/f5/eliminar/<int:cid>", methods=["POST"])
+def f5_eliminar(cid):
+    ok, err = execute(5, "DELETE FROM CITA_F5 WHERE id_cita=%s", (cid,))
+    flash("✓ Cita cancelada eliminada" if ok else f"✗ Error: {err}", "success" if ok else "danger")
+    return redirect(url_for("reportes"))
 
 if __name__ == "__main__":
     import os
