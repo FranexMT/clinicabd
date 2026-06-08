@@ -1,4 +1,3 @@
-# app.py
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -10,13 +9,9 @@ from config import NODOS
 app = Flask(__name__)
 app.secret_key = "sgcm-secret-2026"
 
-# ─── utilidad: estado de todos los nodos ────────────────────
 def estado_nodos():
     return ping_all()
 
-# ════════════════════════════════════════════════════════════
-# INICIO — panel de estado de los 5 nodos
-# ════════════════════════════════════════════════════════════
 @app.route("/")
 def index():
     estado = estado_nodos()
@@ -24,12 +19,8 @@ def index():
 
 @app.route("/api/estado")
 def api_estado():
-    """Endpoint JSON para refrescar el estado de nodos sin recargar."""
     return jsonify({nid: ping(nid) for nid in NODOS})
 
-# ════════════════════════════════════════════════════════════
-# PACIENTES — fragmentos V1 (Nodo1) + V2 (Nodo2) + V3 (Nodo5)
-# ════════════════════════════════════════════════════════════
 @app.route("/pacientes")
 def pacientes():
     v1 = query(1, "SELECT id_paciente, nombre, apellido_p, apellido_m, telefono, email, activo FROM PACIENTE_V1 ORDER BY id_paciente")
@@ -40,29 +31,22 @@ def pacientes():
 
 @app.route("/pacientes/agregar", methods=["GET", "POST"])
 def paciente_agregar():
-    """
-    Agrega un paciente nuevo en los 3 fragmentos verticales.
-    Nodo1 = contacto, Nodo2 = clínico, Nodo5 = estadístico.
-    """
     if request.method == "POST":
         f = request.form
         pid = int(f["id_paciente"])
 
-        # Nodo 1 — PACIENTE_V1 (contacto)
         ok1, _ = execute(1,
             "INSERT INTO PACIENTE_V1 (id_paciente, nombre, apellido_p, apellido_m, telefono, email, activo) "
             "VALUES (%s, %s, %s, %s, %s, %s, 1)",
             (pid, f["nombre"], f["apellido_p"], f.get("apellido_m",""),
              f.get("telefono",""), f.get("email",""))
         )
-        # Nodo 2 — PACIENTE_V2 (clínico)
         ok2, _ = execute(2,
             "INSERT INTO PACIENTE_V2 (id_paciente, nombre, apellido_p, apellido_m, fecha_nac, sexo, tipo_sangre, fecha_registro) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, CURDATE())",
             (pid, f["nombre"], f["apellido_p"], f.get("apellido_m",""),
              f["fecha_nac"], f["sexo"], f.get("tipo_sangre",""))
         )
-        # Nodo 5 — PACIENTE_V3 (estadístico)
         ok3, _ = execute(5,
             "INSERT INTO PACIENTE_V3 (id_paciente, sexo, tipo_sangre, fecha_registro, activo) "
             "VALUES (%s, %s, %s, CURDATE(), 1)",
@@ -85,7 +69,6 @@ def paciente_agregar():
 
 @app.route("/pacientes/eliminar/<int:pid>", methods=["POST"])
 def paciente_eliminar(pid):
-    """Elimina el paciente de los 3 fragmentos verticales."""
     execute(1, "DELETE FROM PACIENTE_V1 WHERE id_paciente = %s", (pid,))
     execute(2, "DELETE FROM PACIENTE_V2 WHERE id_paciente = %s", (pid,))
     execute(5, "DELETE FROM PACIENTE_V3 WHERE id_paciente = %s", (pid,))
@@ -94,7 +77,6 @@ def paciente_eliminar(pid):
 
 @app.route("/pacientes/datos/<int:pid>")
 def paciente_datos(pid):
-    """JSON con datos completos del paciente desde los 3 fragmentos."""
     datos = {}
     v1 = query(1, "SELECT * FROM PACIENTE_V1 WHERE id_paciente=%s", (pid,))
     v2 = query(2, "SELECT * FROM PACIENTE_V2 WHERE id_paciente=%s", (pid,))
@@ -106,7 +88,6 @@ def paciente_datos(pid):
 
 @app.route("/pacientes/editar/<int:pid>", methods=["POST"])
 def paciente_editar(pid):
-    """Actualiza los 3 fragmentos verticales del paciente."""
     f = request.form
     ok1, _ = execute(1,
         "UPDATE PACIENTE_V1 SET nombre=%s, apellido_p=%s, apellido_m=%s, "
@@ -127,14 +108,10 @@ def paciente_editar(pid):
 
 @app.route("/pacientes/v3/eliminar/<int:pid>", methods=["POST"])
 def paciente_v3_eliminar(pid):
-    """Elimina solo el fragmento V3 (N5) de un paciente."""
     ok, _ = execute(5, "DELETE FROM PACIENTE_V3 WHERE id_paciente=%s", (pid,))
     flash(f"PACIENTE_V3 #{pid} eliminado de Nodo 5" if ok else "Error al eliminar", "success" if ok else "danger")
     return redirect(url_for("pacientes"))
 
-# ════════════════════════════════════════════════════════════
-# CITAS — fragmentos F1–F5 repartidos en Nodos 1,2,3,4,5
-# ════════════════════════════════════════════════════════════
 @app.route("/citas")
 def citas():
     f1 = query(1, "SELECT id_cita, id_paciente, id_medico, fecha_cita, hora_cita, motivo, estatus FROM CITA_F1 ORDER BY fecha_cita")
@@ -149,21 +126,12 @@ def citas():
 
 @app.route("/citas/agregar", methods=["POST"])
 def cita_agregar():
-    """
-    Agrega una cita al fragmento correcto segun estatus y fecha.
-    F1 = programada 2026-01 a 2026-06  (Nodo1)
-    F2 = programada 2026-07 a 2026-12  (Nodo2)
-    F3 = completada 2025-01 a 2025-06  (Nodo3)
-    F4 = completada 2025-07 a 2025-12  (Nodo4)
-    F5 = cancelada  cualquier fecha    (Nodo5)
-    """
     f = request.form
     estatus    = f["estatus"]
     fecha_str  = f["fecha_cita"]
     fecha_mes  = int(fecha_str[5:7])  # YYYY-MM-DD → mes
     fecha_anio = int(fecha_str[:4])
 
-    # Decidir nodo y tabla
     if estatus == "cancelada":
         nodo, tabla = 5, "CITA_F5"
     elif estatus == "completada" and fecha_anio == 2025 and fecha_mes <= 6:
@@ -193,13 +161,11 @@ def cita_agregar():
 
 @app.route("/citas/datos/<int:nodo>/<int:cid>")
 def cita_datos(nodo, cid):
-    """JSON con datos de una cita de cualquier fragmento."""
     rows = query(nodo, f"SELECT * FROM CITA_F{nodo} WHERE id_cita=%s", (cid,))
     return jsonify(rows[0] if rows else {})
 
 @app.route("/citas/editar/<int:nodo>/<int:cid>", methods=["POST"])
 def cita_editar(nodo, cid):
-    """Actualiza una cita en cualquier fragmento."""
     f = request.form
     ok, err = execute(nodo,
         f"UPDATE CITA_F{nodo} SET id_paciente=%s, id_medico=%s, fecha_cita=%s, "
@@ -214,7 +180,6 @@ def cita_editar(nodo, cid):
 
 @app.route("/citas/eliminar/<int:nodo>/<int:cid>", methods=["POST"])
 def cita_eliminar(nodo, cid):
-    """Elimina una cita de cualquier fragmento."""
     ok, err = execute(nodo, f"DELETE FROM CITA_F{nodo} WHERE id_cita=%s", (cid,))
     if ok:
         flash(f"✓ Cita #{cid} eliminada de Nodo {nodo}", "success")
@@ -222,9 +187,7 @@ def cita_eliminar(nodo, cid):
         flash(f"✗ Error al eliminar cita #{cid}: {err}", "danger")
     return redirect(url_for("citas"))
 
-# ════════════════════════════════════════════════════════════
-# MÉDICOS — Nodo 1
-# ════════════════════════════════════════════════════════════
+# MEDICOS
 @app.route("/medicos")
 def medicos():
     medicos_  = query(1, """
@@ -280,9 +243,7 @@ def medico_eliminar(id):
           "success" if ok else "danger")
     return redirect(url_for("medicos"))
 
-# ════════════════════════════════════════════════════════════
-# FARMACIA — Nodo 3 (medicamentos + recetas pendientes)
-# ════════════════════════════════════════════════════════════
+# FARMACIA
 @app.route("/farmacia")
 def farmacia():
     medicamentos = query(3,
@@ -347,9 +308,7 @@ def medicamento_eliminar(id):
           "success" if ok else "danger")
     return redirect(url_for("farmacia"))
 
-# ════════════════════════════════════════════════════════════
-# ADMINISTRACIÓN — Nodo 4 (facturas + pagos)
-# ════════════════════════════════════════════════════════════
+# ADMINISTRACION
 @app.route("/admin")
 def admin():
     facturas = query(4, """
@@ -413,9 +372,7 @@ def pago_eliminar(id):
           "success" if ok else "danger")
     return redirect(url_for("admin"))
 
-# ════════════════════════════════════════════════════════════
-# REPORTES — Nodo 5 (estadísticas y análisis)
-# ════════════════════════════════════════════════════════════
+# REPORTES
 @app.route("/reportes")
 def reportes():
     # Demografía por tipo de sangre
@@ -463,7 +420,6 @@ def reportes():
                            v3_list=v3_list, f5_list=f5_list,
                            estado=estado, nodos=NODOS)
 
-# ─── PACIENTE_V3 CRUD (Nodo 5) ───
 @app.route("/reportes/v3/agregar", methods=["POST"])
 def v3_agregar():
     f = request.form
@@ -489,7 +445,6 @@ def v3_eliminar(pid):
     flash("✓ Paciente V3 eliminado" if ok else f"✗ Error: {err}", "success" if ok else "danger")
     return redirect(url_for("reportes"))
 
-# ─── CITA_F5 CRUD (Nodo 5) ───
 @app.route("/reportes/f5/agregar", methods=["POST"])
 def f5_agregar():
     f = request.form
