@@ -3,10 +3,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import mysql.connector
 from config import NODOS
 
-TIMEOUT = 2
+TIMEOUT = 3
 _cache_estado = {}
 _cache_ts = 0
-_CACHE_TTL = 5
+_CACHE_TTL = 8
 
 def get_conn(nodo_id):
     cfg = NODOS[nodo_id]

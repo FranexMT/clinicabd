@@ -409,9 +409,9 @@
       <div class="node-row">
         <span class="ndot {{ 'up' if estado[nid] else 'down' }}" id="dot-{{nid}}"></span>
         <span class="node-name">{{ cfg.nombre }}</span>
-        <span class="node-badge {{ 'up' if estado[nid] else 'down' }}">
-          {{ 'ON' if estado[nid] else 'OFF' }}
-        </span>
+    <span class="node-badge {{ 'up' if estado[nid] else 'down' }}" id="badge-{{nid}}">
+      {{ 'ON' if estado[nid] else 'OFF' }}
+    </span>
       </div>
       {% endfor %}
     </div>
@@ -451,15 +451,21 @@
 <script>
 async function refreshEstado() {
   try {
-    const r = await fetch('/api/estado');
+    const r = await fetch('/api/estado?_=' + Date.now());
     const data = await r.json();
     for (const [nid, up] of Object.entries(data)) {
       const dot = document.getElementById('dot-' + nid);
       if (dot) dot.className = 'ndot ' + (up ? 'up' : 'down');
+      const badge = document.getElementById('badge-' + nid);
+      if (badge) {
+        badge.textContent = up ? 'ON' : 'OFF';
+        badge.className = 'node-badge ' + (up ? 'up' : 'down');
+      }
     }
   } catch(e) {}
 }
-setInterval(refreshEstado, 30000);
+refreshEstado();
+setInterval(refreshEstado, 15000);
 </script>
 </body>
 </html>
