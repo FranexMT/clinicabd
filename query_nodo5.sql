@@ -2,7 +2,6 @@
 -- SGCM — CONSULTA ÓPTIMA NODO 5
 -- Sistema de Gestión de Clínica Médica (SGCM)
 -- Bases de Datos Distribuidas — UABC 2026
--- Profesora: Lissethe Guadalupe Lamadrid López
 -- ============================================================
 -- Nodo 5 — Reportes (Oscar)
 -- Base de datos: sgcm_nodo5

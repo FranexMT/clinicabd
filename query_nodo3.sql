@@ -2,7 +2,6 @@
 -- SGCM — CONSULTA ÓPTIMA NODO 3
 -- Sistema de Gestión de Clínica Médica (SGCM)
 -- Bases de Datos Distribuidas — UABC 2026
--- Profesora: Lissethe Guadalupe Lamadrid López
 -- ============================================================
 -- Nodo 3 — Farmacia (Elmer)
 -- Base de datos: sgcm_nodo3
