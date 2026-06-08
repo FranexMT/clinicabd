@@ -413,6 +413,52 @@ def pago_eliminar(id):
           "success" if ok else "danger")
     return redirect(url_for("admin"))
 
+# ════════════════════════════════════════════════════════════
+# REPORTES — Nodo 5 (estadísticas y análisis)
+# ════════════════════════════════════════════════════════════
+@app.route("/reportes")
+def reportes():
+    # Demografía por tipo de sangre
+    demografia_sangre = query(5, """
+        SELECT tipo_sangre, COUNT(*) AS total,
+               ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM PACIENTE_V3 WHERE activo=1), 1) AS porcentaje
+        FROM PACIENTE_V3 WHERE activo=1
+        GROUP BY tipo_sangre ORDER BY total DESC
+    """)
+    # Demografía por sexo
+    demografia_sexo = query(5, """
+        SELECT CASE sexo WHEN 'M' THEN 'Masculino' ELSE 'Femenino' END AS genero,
+               COUNT(*) AS total
+        FROM PACIENTE_V3 WHERE activo=1 GROUP BY sexo
+    """)
+    # Cancelaciones por mes
+    cancelaciones_mes = query(5, """
+        SELECT YEAR(fecha_cita) AS anio, MONTH(fecha_cita) AS mes,
+               COUNT(*) AS total_cancelaciones
+        FROM CITA_F5 GROUP BY anio, mes ORDER BY anio, mes
+    """)
+    # Top canceladores
+    top_canceladores = query(5, """
+        SELECT id_paciente, COUNT(*) AS num_cancelaciones,
+               MIN(fecha_cita) AS primera, MAX(fecha_cita) AS ultima
+        FROM CITA_F5 GROUP BY id_paciente
+        ORDER BY num_cancelaciones DESC LIMIT 10
+    """)
+    # Crecimiento de pacientes
+    crecimiento = query(5, """
+        SELECT YEAR(fecha_registro) AS anio, MONTH(fecha_registro) AS mes,
+               COUNT(*) AS nuevos
+        FROM PACIENTE_V3 GROUP BY anio, mes ORDER BY anio, mes
+    """)
+    estado = estado_nodos()
+    return render_template("reportes.html",
+                           demografia_sangre=demografia_sangre,
+                           demografia_sexo=demografia_sexo,
+                           cancelaciones_mes=cancelaciones_mes,
+                           top_canceladores=top_canceladores,
+                           crecimiento=crecimiento,
+                           estado=estado, nodos=NODOS)
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("SGCM_PORT", 5050))

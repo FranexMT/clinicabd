@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Reportes y Estadisticas</div>
+<div class="page-subtitle">Nodo 5 &mdash; Analisis de datos de la clinica</div>
+
+<!-- Demografia -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+
+  <!-- Sangre -->
+  <div class="card">
+    <div class="card-header" style="border-left:4px solid #8b5cf6;">
+      <span>&#x1F489; Tipo de sangre (pacientes activos)</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if demografia_sangre %}
+      <table>
+        <thead>
+          <tr><th>Tipo</th><th>Cantidad</th><th>%</th></tr>
+        </thead>
+        <tbody>
+          {% for r in demografia_sangre %}
+          <tr>
+            <td style="font-weight:600;">{{ r.tipo_sangre or '&#x2014;' }}</td>
+            <td>{{ r.total }}</td>
+            <td>{{ r.porcentaje }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state"><span>&#x1F4E1;</span>Nodo 5 no disponible.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Sexo -->
+  <div class="card">
+    <div class="card-header" style="border-left:4px solid #ec4899;">
+      <span>&#x1F464; Distribucion por sexo</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if demografia_sexo %}
+      <table>
+        <thead>
+          <tr><th>Genero</th><th>Cantidad</th></tr>
+        </thead>
+        <tbody>
+          {% for r in demografia_sexo %}
+          <tr>
+            <td style="font-weight:600;">{{ r.genero }}</td>
+            <td>{{ r.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state"><span>&#x1F4E1;</span>Nodo 5 no disponible.</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Cancelaciones por mes -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #ef4444;">
+    <span>&#x1F4C5; Cancelaciones por mes</span>
+    <span class="ch-sub">Total: {{ cancelaciones_mes|sum(attribute='total_cancelaciones') if cancelaciones_mes else 0 }}</span>
+  </div>
+  <div class="table-wrap">
+    {% if cancelaciones_mes %}
+    <table>
+      <thead>
+        <tr><th>Anio</th><th>Mes</th><th>Cancelaciones</th></tr>
+      </thead>
+      <tbody>
+        {% set meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] %}
+        {% for r in cancelaciones_mes %}
+        <tr>
+          <td>{{ r.anio }}</td>
+          <td style="font-weight:500;">{{ meses[r.mes] }}</td>
+          <td style="font-weight:700; color:#991b1b;">{{ r.total_cancelaciones }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 5 no disponible.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Top canceladores -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #f59e0b;">
+    <span>&#x26A0; Pacientes con mas cancelaciones</span>
+    <span class="ch-sub">Top 10</span>
+  </div>
+  <div class="table-wrap">
+    {% if top_canceladores %}
+    <table>
+      <thead>
+        <tr><th>Paciente</th><th>Cancelaciones</th><th>Primera</th><th>Ultima</th></tr>
+      </thead>
+      <tbody>
+        {% for r in top_canceladores %}
+        <tr>
+          <td style="font-weight:600;">#{{ r.id_paciente }}</td>
+          <td style="font-weight:700; color:#991b1b;">{{ r.num_cancelaciones }}</td>
+          <td>{{ r.primera }}</td>
+          <td>{{ r.ultima }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 5 no disponible.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Crecimiento de pacientes -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #10b981;">
+    <span>&#x1F4C8; Crecimiento de registros por mes</span>
+  </div>
+  <div class="table-wrap">
+    {% if crecimiento %}
+    <table>
+      <thead>
+        <tr><th>Anio</th><th>Mes</th><th>Nuevos pacientes</th></tr>
+      </thead>
+      <tbody>
+        {% set meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] %}
+        {% for r in crecimiento %}
+        <tr>
+          <td>{{ r.anio }}</td>
+          <td style="font-weight:500;">{{ meses[r.mes] }}</td>
+          <td style="font-weight:600;">{{ r.nuevos }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 5 no disponible.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
