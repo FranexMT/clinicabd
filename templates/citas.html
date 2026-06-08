@@ -4,7 +4,7 @@
 <div class="page-title">Citas</div>
 <div class="page-subtitle">Fragmentacion horizontal (COM-MIN) &mdash; 5 fragmentos distribuidos</div>
 
-<!-- Formulario -->
+<!-- Formulario de registro -->
 <div class="card">
   <div class="card-header">Registrar nueva cita</div>
   <div class="card-body">
@@ -47,6 +47,51 @@
   </div>
 </div>
 
+<!-- Formulario de edicion (oculto) -->
+<div id="edit-cita-card" class="card" style="display:none; border:2px solid #f59e0b;">
+  <div class="card-header" style="background:#fef3c7; color:#92400e;">
+    <span>&#x270F; Editar cita #<span id="edit-cita-id-label"></span> &mdash; Nodo <span id="edit-cita-nodo-label"></span></span>
+  </div>
+  <div class="card-body">
+    <form id="edit-cita-form" method="POST" action="">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ID Paciente</label>
+          <input type="number" name="id_paciente" id="edit-cita-paciente" required min="1">
+        </div>
+        <div class="form-group">
+          <label>ID Medico</label>
+          <input type="number" name="id_medico" id="edit-cita-medico" required min="1">
+        </div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" name="fecha_cita" id="edit-cita-fecha" required>
+        </div>
+        <div class="form-group">
+          <label>Hora</label>
+          <input type="time" name="hora_cita" id="edit-cita-hora" required>
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <input type="text" name="motivo" id="edit-cita-motivo">
+        </div>
+        <div class="form-group">
+          <label>Estatus</label>
+          <select name="estatus" id="edit-cita-estatus" required>
+            <option value="programada">Programada</option>
+            <option value="completada">Completada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-warning">&#x1F4BE; Guardar cambios</button>
+        <button type="button" class="btn btn-ghost" onclick="cancelarEdicionCita()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Fragmentos -->
 {% set frags = [
   (f1, 1, 'CITA_F1',  'Programadas 1er semestre 2026', '#2563eb', '#dbeafe', '#1e40af'),
@@ -72,7 +117,7 @@
       <thead>
         <tr>
           <th>ID</th><th>Paciente</th><th>Medico</th>
-          <th>Fecha</th><th>Hora</th><th>Motivo</th><th>Estatus</th>
+          <th>Fecha</th><th>Hora</th><th>Motivo</th><th>Estatus</th><th style="width:110px;"></th>
         </tr>
       </thead>
       <tbody>
@@ -89,6 +134,14 @@
               {{ c.estatus }}
             </span>
           </td>
+          <td>
+            <button class="btn btn-warning btn-sm" onclick="editarCita({{ nid }}, {{ c.id_cita }})">&#x270F;</button>
+            <form method="POST" action="/citas/eliminar/{{ nid }}/{{ c.id_cita }}"
+                  onsubmit="return confirm('Eliminar cita #{{ c.id_cita }} de Nodo {{ nid }}?')"
+                  style="display:inline">
+              <button class="btn btn-danger btn-sm">&#x2716;</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -99,5 +152,29 @@
   </div>
 </div>
 {% endfor %}
+
+<script>
+function editarCita(nodo, cid) {
+  fetch('/citas/datos/' + nodo + '/' + cid)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('edit-cita-id-label').textContent = cid;
+      document.getElementById('edit-cita-nodo-label').textContent = nodo;
+      document.getElementById('edit-cita-form').action = '/citas/editar/' + nodo + '/' + cid;
+      document.getElementById('edit-cita-paciente').value = d.id_paciente || '';
+      document.getElementById('edit-cita-medico').value = d.id_medico || '';
+      document.getElementById('edit-cita-fecha').value = d.fecha_cita || '';
+      document.getElementById('edit-cita-hora').value = d.hora_cita || '';
+      document.getElementById('edit-cita-motivo').value = d.motivo || '';
+      document.getElementById('edit-cita-estatus').value = d.estatus || 'programada';
+      document.getElementById('edit-cita-card').style.display = 'block';
+      document.getElementById('edit-cita-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    })
+    .catch(() => alert('Error al cargar datos de la cita'));
+}
+function cancelarEdicionCita() {
+  document.getElementById('edit-cita-card').style.display = 'none';
+}
+</script>
 
 {% endblock %}

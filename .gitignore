@@ -4,3 +4,5 @@ __pycache__/
 *.pyo
 .env
 *.sqlite3
+*.log
+*.pid

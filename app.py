@@ -1,4 +1,8 @@
 # app.py
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from db import query, execute, ping, ping_all
 from config import NODOS
@@ -88,6 +92,46 @@ def paciente_eliminar(pid):
     flash(f"Paciente #{pid} eliminado de los 3 nodos.", "warning")
     return redirect(url_for("pacientes"))
 
+@app.route("/pacientes/datos/<int:pid>")
+def paciente_datos(pid):
+    """JSON con datos completos del paciente desde los 3 fragmentos."""
+    datos = {}
+    v1 = query(1, "SELECT * FROM PACIENTE_V1 WHERE id_paciente=%s", (pid,))
+    v2 = query(2, "SELECT * FROM PACIENTE_V2 WHERE id_paciente=%s", (pid,))
+    v3 = query(5, "SELECT * FROM PACIENTE_V3 WHERE id_paciente=%s", (pid,))
+    if v1: datos.update(v1[0])
+    if v2: datos.update(v2[0])
+    if v3: datos.update(v3[0])
+    return jsonify(datos)
+
+@app.route("/pacientes/editar/<int:pid>", methods=["POST"])
+def paciente_editar(pid):
+    """Actualiza los 3 fragmentos verticales del paciente."""
+    f = request.form
+    ok1, _ = execute(1,
+        "UPDATE PACIENTE_V1 SET nombre=%s, apellido_p=%s, apellido_m=%s, "
+        "telefono=%s, email=%s, activo=%s WHERE id_paciente=%s",
+        (f["nombre"], f["apellido_p"], f.get("apellido_m",""),
+         f.get("telefono",""), f.get("email",""), int(f.get("activo",1)), pid))
+    ok2, _ = execute(2,
+        "UPDATE PACIENTE_V2 SET nombre=%s, apellido_p=%s, apellido_m=%s, "
+        "fecha_nac=%s, sexo=%s, tipo_sangre=%s WHERE id_paciente=%s",
+        (f["nombre"], f["apellido_p"], f.get("apellido_m",""),
+         f["fecha_nac"], f["sexo"], f.get("tipo_sangre",""), pid))
+    ok3, _ = execute(5,
+        "UPDATE PACIENTE_V3 SET sexo=%s, tipo_sangre=%s, activo=%s WHERE id_paciente=%s",
+        (f["sexo"], f.get("tipo_sangre",""), int(f.get("activo",1)), pid))
+    for nombre, ok in [("N1 Contacto", ok1), ("N2 Clinico", ok2), ("N5 Estadistico", ok3)]:
+        flash(f"{'OK' if ok else 'FAIL'} {nombre}", "success" if ok else "danger")
+    return redirect(url_for("pacientes"))
+
+@app.route("/pacientes/v3/eliminar/<int:pid>", methods=["POST"])
+def paciente_v3_eliminar(pid):
+    """Elimina solo el fragmento V3 (N5) de un paciente."""
+    ok, _ = execute(5, "DELETE FROM PACIENTE_V3 WHERE id_paciente=%s", (pid,))
+    flash(f"PACIENTE_V3 #{pid} eliminado de Nodo 5" if ok else "Error al eliminar", "success" if ok else "danger")
+    return redirect(url_for("pacientes"))
+
 # ════════════════════════════════════════════════════════════
 # CITAS — fragmentos F1–F5 repartidos en Nodos 1,2,3,4,5
 # ════════════════════════════════════════════════════════════
@@ -106,7 +150,7 @@ def citas():
 @app.route("/citas/agregar", methods=["POST"])
 def cita_agregar():
     """
-    Agrega una cita al fragmento correcto según estatus y fecha.
+    Agrega una cita al fragmento correcto segun estatus y fecha.
     F1 = programada 2026-01 a 2026-06  (Nodo1)
     F2 = programada 2026-07 a 2026-12  (Nodo2)
     F3 = completada 2025-01 a 2025-06  (Nodo3)
@@ -147,6 +191,37 @@ def cita_agregar():
 
     return redirect(url_for("citas"))
 
+@app.route("/citas/datos/<int:nodo>/<int:cid>")
+def cita_datos(nodo, cid):
+    """JSON con datos de una cita de cualquier fragmento."""
+    rows = query(nodo, f"SELECT * FROM CITA_F{nodo} WHERE id_cita=%s", (cid,))
+    return jsonify(rows[0] if rows else {})
+
+@app.route("/citas/editar/<int:nodo>/<int:cid>", methods=["POST"])
+def cita_editar(nodo, cid):
+    """Actualiza una cita en cualquier fragmento."""
+    f = request.form
+    ok, err = execute(nodo,
+        f"UPDATE CITA_F{nodo} SET id_paciente=%s, id_medico=%s, fecha_cita=%s, "
+        f"hora_cita=%s, motivo=%s, estatus=%s WHERE id_cita=%s",
+        (f["id_paciente"], f["id_medico"], f["fecha_cita"],
+         f["hora_cita"], f.get("motivo",""), f["estatus"], cid))
+    if ok:
+        flash(f"✓ Cita #{cid} actualizada en Nodo {nodo}", "success")
+    else:
+        flash(f"✗ Error al actualizar cita #{cid}: {err}", "danger")
+    return redirect(url_for("citas"))
+
+@app.route("/citas/eliminar/<int:nodo>/<int:cid>", methods=["POST"])
+def cita_eliminar(nodo, cid):
+    """Elimina una cita de cualquier fragmento."""
+    ok, err = execute(nodo, f"DELETE FROM CITA_F{nodo} WHERE id_cita=%s", (cid,))
+    if ok:
+        flash(f"✓ Cita #{cid} eliminada de Nodo {nodo}", "success")
+    else:
+        flash(f"✗ Error al eliminar cita #{cid}: {err}", "danger")
+    return redirect(url_for("citas"))
+
 # ════════════════════════════════════════════════════════════
 # MÉDICOS — Nodo 1
 # ════════════════════════════════════════════════════════════
@@ -177,6 +252,31 @@ def medico_agregar():
          f["id_especialidad"], f.get("turno","matutino"))
     )
     flash(f"✓ Médico registrado" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("medicos"))
+
+@app.route("/medicos/datos/<int:id>")
+def medico_datos(id):
+    rows = query(1, "SELECT * FROM MEDICO WHERE id_medico=%s", (id,))
+    return jsonify(rows[0] if rows else {})
+
+@app.route("/medicos/editar/<int:id>", methods=["POST"])
+def medico_editar(id):
+    f = request.form
+    ok, err = execute(1,
+        "UPDATE MEDICO SET nombre=%s, apellido_p=%s, apellido_m=%s, cedula=%s, "
+        "telefono=%s, email=%s, id_especialidad=%s, turno=%s WHERE id_medico=%s",
+        (f["nombre"], f["apellido_p"], f.get("apellido_m",""), f["cedula"],
+         f.get("telefono",""), f.get("email",""), f["id_especialidad"],
+         f["turno"], id))
+    flash(f"✓ Médico #{id} actualizado" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("medicos"))
+
+@app.route("/medicos/eliminar/<int:id>", methods=["POST"])
+def medico_eliminar(id):
+    ok, err = execute(1, "DELETE FROM MEDICO WHERE id_medico=%s", (id,))
+    flash(f"✓ Médico #{id} eliminado" if ok else f"✗ Error: {err}",
           "success" if ok else "danger")
     return redirect(url_for("medicos"))
 
@@ -213,6 +313,40 @@ def dispensar(id_detalle):
           "success" if ok else "danger")
     return redirect(url_for("farmacia"))
 
+@app.route("/farmacia/medicamento/agregar", methods=["POST"])
+def medicamento_agregar():
+    f = request.form
+    ok, err = execute(3,
+        "INSERT INTO MEDICAMENTO (nombre, presentacion, dosis_std, stock, precio) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (f["nombre"], f["presentacion"], f.get("dosis_std",""),
+         int(f["stock"]), float(f["precio"])))
+    flash(f"✓ Medicamento registrado" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("farmacia"))
+
+@app.route("/farmacia/medicamento/datos/<int:id>")
+def medicamento_datos(id):
+    rows = query(3, "SELECT * FROM MEDICAMENTO WHERE id_medicamento=%s", (id,))
+    return jsonify(rows[0] if rows else {})
+
+@app.route("/farmacia/medicamento/editar/<int:id>", methods=["POST"])
+def medicamento_editar(id):
+    f = request.form
+    ok, err = execute(3,
+        "UPDATE MEDICAMENTO SET nombre=%s, presentacion=%s, dosis_std=%s, stock=%s, precio=%s WHERE id_medicamento=%s",
+        (f["nombre"], f["presentacion"], f.get("dosis_std",""), int(f["stock"]), float(f["precio"]), id))
+    flash(f"✓ Medicamento #{id} actualizado" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("farmacia"))
+
+@app.route("/farmacia/medicamento/eliminar/<int:id>", methods=["POST"])
+def medicamento_eliminar(id):
+    ok, err = execute(3, "DELETE FROM MEDICAMENTO WHERE id_medicamento=%s", (id,))
+    flash(f"✓ Medicamento #{id} eliminado" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("farmacia"))
+
 # ════════════════════════════════════════════════════════════
 # ADMINISTRACIÓN — Nodo 4 (facturas + pagos)
 # ════════════════════════════════════════════════════════════
@@ -238,12 +372,10 @@ def admin():
 @app.route("/admin/pagar/<int:id_factura>", methods=["POST"])
 def registrar_pago(id_factura):
     f = request.form
-    # marcar factura como pagada
     execute(4,
         "UPDATE FACTURA SET estatus_pago = 'pagado' WHERE id_factura = %s",
         (id_factura,)
     )
-    # insertar registro de pago
     ok, err = execute(4,
         "INSERT INTO PAGO (id_factura, fecha_pago, monto, metodo_pago) "
         "VALUES (%s, CURDATE(), %s, %s)",
@@ -253,5 +385,39 @@ def registrar_pago(id_factura):
           "success" if ok else "danger")
     return redirect(url_for("admin"))
 
+@app.route("/admin/factura/agregar", methods=["POST"])
+def factura_agregar():
+    f = request.form
+    total = float(f["subtotal"]) * 1.16
+    iva = total - float(f["subtotal"])
+    ok, err = execute(4,
+        "INSERT INTO FACTURA (id_consulta, fecha_emision, subtotal, iva, total, estatus_pago) "
+        "VALUES (%s, %s, %s, %s, %s, 'pendiente')",
+        (f["id_consulta"], f["fecha_emision"], float(f["subtotal"]), iva, total))
+    flash("✓ Factura creada" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("admin"))
+
+@app.route("/admin/factura/eliminar/<int:id>", methods=["POST"])
+def factura_eliminar(id):
+    execute(4, "DELETE FROM PAGO WHERE id_factura=%s", (id,))
+    ok, err = execute(4, "DELETE FROM FACTURA WHERE id_factura=%s", (id,))
+    flash(f"✓ Factura #{id} eliminada" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("admin"))
+
+@app.route("/admin/pago/eliminar/<int:id>", methods=["POST"])
+def pago_eliminar(id):
+    ok, err = execute(4, "DELETE FROM PAGO WHERE id_pago=%s", (id,))
+    flash(f"✓ Pago #{id} eliminado" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("admin"))
+
 if __name__ == "__main__":
-    app.run(debug=False, port=5050)
+    import os
+    port = int(os.environ.get("SGCM_PORT", 5050))
+    print(f" SGCM iniciado en http://0.0.0.0:{port}")
+    print(f" Acceso local:    http://localhost:{port}")
+    print(f" Red Hamachi:     http://<tu-ip-hamachi>:{port}")
+    print(f" Nodos configurados: {len(NODOS)}")
+    app.run(host="0.0.0.0", port=port)

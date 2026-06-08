@@ -1,51 +1,56 @@
 # SGCM — Sistema de Gestión de Clínica Médica
-**Bases de Datos Distribuidas — UABC 2026**
 
-App Flask que conecta los 5 nodos MySQL distribuidos vía Hamachi.
+App Flask que conecta 5 nodos MySQL distribuidos via Hamachi.
+
+## Como correrlo (facil)
+
+```bash
+./run.sh
+```
+
+Eso solo. El script:
+- Crea el entorno virtual si no existe
+- Instala dependencias
+- Verifica Hamachi
+- Carga configuracion desde `.env` (si existe)
+- Inicia la aplicacion
+
+Luego abre: **http://localhost:5050**
 
 ## Requisitos
+
 - Python 3.10+
-- MySQL corriendo en tu nodo
+- MySQL 8.0 corriendo en tu nodo
 - Hamachi conectado a la red `SGCM-BDD-2026`
 
-## Instalación (solo la primera vez)
+## Configuracion
+
+Cada quien edita su archivo `.env` (copiar desde `.env.example`):
 
 ```bash
-# 1. Clonar
-git clone https://github.com/franex01/sgcm-app.git
-cd sgcm-app
-
-# 2. Crear entorno virtual
-python3 -m venv venv
-source venv/bin/activate        # Linux/Mac
-# venv\Scripts\activate         # Windows
-
-# 3. Instalar dependencias
-pip install -r requirements.txt
+cp .env.example .env
+# Editar IPs Hamachi de los companeros
 ```
 
-## Ejecutar
+Tu nodo local va como `127.0.0.1`. Los demas van con su IP Hamachi.
 
-```bash
-source venv/bin/activate
-python app.py
+### Nodos
+
+| Nodo | Encargado | Tablas |
+|------|-----------|--------|
+| 1 — Recepcion | Francisco | PACIENTE_V1, MEDICO, ESPECIALIDAD, CITA_F1 |
+| 2 — Medicos | Axel | PACIENTE_V2, CITA_F2, EXPEDIENTE, CONSULTA, RECETA |
+| 3 — Farmacia | Elmer | MEDICAMENTO, DETALLE_RECETA, CITA_F3 |
+| 4 — Admin | Jorge | FACTURA, PAGO, CITA_F4 |
+| 5 — Reportes | Oscar | PACIENTE_V3, CITA_F5 |
+
+La app soporta nodos caidos: muestra datos disponibles y marca en rojo los que no responden.
+
+## Acceso remoto
+
+Como la app escucha en `0.0.0.0`, cualquier miembro del equipo puede ver el dashboard
+de otro usando la IP Hamachi:
+
 ```
-
-Luego abrir en el navegador: **http://localhost:5050**
-
-## IPs de Hamachi configuradas
-
-| Nodo | Alumno | IP Hamachi |
-|------|--------|------------|
-| 1 — Recepción | Francisco | 127.0.0.1 (local) |
-| 2 — Médicos | Axel | 25.19.18.201 |
-| 3 — Farmacia | Elmer | 25.33.183.45 |
-| 4 — Administración | Jorge | 25.4.227.153 |
-| 5 — Reportes | Oscar | 25.22.219.100 |
-
-> Las IPs cambian cada sesión de Hamachi. Si cambian, editar `config.py`.
-
-## Notas
-- El nodo que corre la app debe tener Hamachi activo y conectado
-- Si un nodo está caído, la app sigue funcionando mostrando ese nodo en rojo
-- Credenciales MySQL: `bdd_user` / `Sgcm2026#`
+http://25.x.x.x:5050
+```

@@ -4,7 +4,7 @@
 <div class="page-title">Medicos y Especialidades</div>
 <div class="page-subtitle">Nodo 1 &mdash; Administracion</div>
 
-<!-- Formulario -->
+<!-- Formulario de registro -->
 <div class="card">
   <div class="card-header">Registrar nuevo medico</div>
   <div class="card-body">
@@ -58,6 +58,63 @@
   </div>
 </div>
 
+<!-- Formulario de edicion (oculto) -->
+<div id="edit-medico-card" class="card" style="display:none; border:2px solid #f59e0b;">
+  <div class="card-header" style="background:#fef3c7; color:#92400e;">
+    <span>&#x270F; Editar medico #<span id="edit-medico-id-label"></span></span>
+  </div>
+  <div class="card-body">
+    <form id="edit-medico-form" method="POST" action="">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" name="nombre" id="edit-medico-nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido paterno</label>
+          <input type="text" name="apellido_p" id="edit-medico-apellido_p" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido materno</label>
+          <input type="text" name="apellido_m" id="edit-medico-apellido_m">
+        </div>
+        <div class="form-group">
+          <label>Cedula</label>
+          <input type="text" name="cedula" id="edit-medico-cedula" required>
+        </div>
+        <div class="form-group">
+          <label>Telefono</label>
+          <input type="text" name="telefono" id="edit-medico-telefono">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" id="edit-medico-email">
+        </div>
+        <div class="form-group">
+          <label>Especialidad</label>
+          <select name="id_especialidad" id="edit-medico-especialidad" required>
+            {% for e in especialidades %}
+            <option value="{{ e.id_especialidad }}">{{ e.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Turno</label>
+          <select name="turno" id="edit-medico-turno">
+            <option value="matutino">Matutino</option>
+            <option value="vespertino">Vespertino</option>
+            <option value="nocturno">Nocturno</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-warning">&#x1F4BE; Guardar cambios</button>
+        <button type="button" class="btn btn-ghost" onclick="cancelarEdicionMedico()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Tabla -->
 <div class="card">
   <div class="card-header" style="border-left:4px solid #8b5cf6;">
@@ -74,7 +131,7 @@
       <thead>
         <tr>
           <th>ID</th><th>Nombre</th><th>Cedula</th>
-          <th>Especialidad</th><th>Turno</th><th>Telefono</th>
+          <th>Especialidad</th><th>Turno</th><th>Telefono</th><th style="width:110px;"></th>
         </tr>
       </thead>
       <tbody>
@@ -90,6 +147,13 @@
             </span>
           </td>
           <td style="color:#64748b;">{{ m.telefono or '&#x2014;' }}</td>
+          <td>
+            <button class="btn btn-warning btn-sm" onclick="editarMedico({{ m.id_medico }})">&#x270F;</button>
+            <form method="POST" action="/medicos/eliminar/{{ m.id_medico }}"
+                  onsubmit="return confirm('Eliminar medico #{{ m.id_medico }}?')" style="display:inline">
+              <button class="btn btn-danger btn-sm">&#x2716;</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -99,5 +163,30 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+function editarMedico(id) {
+  fetch('/medicos/datos/' + id)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('edit-medico-id-label').textContent = id;
+      document.getElementById('edit-medico-form').action = '/medicos/editar/' + id;
+      document.getElementById('edit-medico-nombre').value = d.nombre || '';
+      document.getElementById('edit-medico-apellido_p').value = d.apellido_p || '';
+      document.getElementById('edit-medico-apellido_m').value = d.apellido_m || '';
+      document.getElementById('edit-medico-cedula').value = d.cedula || '';
+      document.getElementById('edit-medico-telefono').value = d.telefono || '';
+      document.getElementById('edit-medico-email').value = d.email || '';
+      document.getElementById('edit-medico-especialidad').value = d.id_especialidad || '';
+      document.getElementById('edit-medico-turno').value = d.turno || 'matutino';
+      document.getElementById('edit-medico-card').style.display = 'block';
+      document.getElementById('edit-medico-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    })
+    .catch(() => alert('Error al cargar datos del medico'));
+}
+function cancelarEdicionMedico() {
+  document.getElementById('edit-medico-card').style.display = 'none';
+}
+</script>
 
 {% endblock %}

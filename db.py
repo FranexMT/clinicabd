@@ -1,10 +1,9 @@
-# db.py
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import mysql.connector
 from config import NODOS
 
-TIMEOUT = 1
+TIMEOUT = 2
 _cache_estado = {}
 _cache_ts = 0
 _CACHE_TTL = 5
@@ -21,10 +20,6 @@ def get_conn(nodo_id):
     )
 
 def query(nodo_id, sql, params=()):
-    """
-    Ejecuta un SELECT y devuelve lista de dicts {columna: valor}.
-    Devuelve [] si el nodo no responde.
-    """
     try:
         conn = get_conn(nodo_id)
         cur  = conn.cursor(dictionary=True)
@@ -33,14 +28,10 @@ def query(nodo_id, sql, params=()):
         conn.close()
         return rows
     except Exception as e:
-        print(f"[NODO {nodo_id}] Error: {e}")
+        print(f"[NODO {nodo_id}] Error query: {e}")
         return []
 
 def execute(nodo_id, sql, params=()):
-    """
-    Ejecuta INSERT / UPDATE / DELETE.
-    Devuelve (True, lastrowid) o (False, mensaje_error).
-    """
     try:
         conn = get_conn(nodo_id)
         cur  = conn.cursor()

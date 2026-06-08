@@ -4,7 +4,7 @@
 <div class="page-title">Pacientes</div>
 <div class="page-subtitle">Fragmentacion vertical &mdash; 3 fragmentos distribuidos</div>
 
-<!-- Formulario -->
+<!-- Formulario de registro -->
 <div class="card">
   <div class="card-header">
     Registrar nuevo paciente
@@ -64,6 +64,72 @@
   </div>
 </div>
 
+<!-- Formulario de edicion (oculto por defecto) -->
+<div id="edit-card" class="card" style="display:none; border:2px solid #f59e0b;">
+  <div class="card-header" style="background:#fef3c7; color:#92400e;">
+    <span>&#x270F; Editar paciente #<span id="edit-id-label"></span></span>
+    <span class="ch-sub">Los cambios se aplican a los 3 fragmentos (N1, N2, N5)</span>
+  </div>
+  <div class="card-body">
+    <form id="edit-form" method="POST" action="">
+      <input type="hidden" name="activo" id="edit-activo" value="1">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" name="nombre" id="edit-nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido paterno</label>
+          <input type="text" name="apellido_p" id="edit-apellido_p" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido materno</label>
+          <input type="text" name="apellido_m" id="edit-apellido_m">
+        </div>
+        <div class="form-group">
+          <label>Telefono</label>
+          <input type="text" name="telefono" id="edit-telefono">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" id="edit-email">
+        </div>
+        <div class="form-group">
+          <label>Fecha de nacimiento</label>
+          <input type="date" name="fecha_nac" id="edit-fecha_nac" required>
+        </div>
+        <div class="form-group">
+          <label>Sexo</label>
+          <select name="sexo" id="edit-sexo" required>
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipo de sangre</label>
+          <select name="tipo_sangre" id="edit-tipo_sangre">
+            <option value="">&#x2014;</option>
+            {% for t in ['O+','O-','A+','A-','B+','B-','AB+','AB-'] %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Activo</label>
+          <select name="activo_display" id="edit-activo_display" onchange="document.getElementById('edit-activo').value=this.value">
+            <option value="1">Si</option>
+            <option value="0">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-warning">&#x1F4BE; Guardar cambios</button>
+        <button type="button" class="btn btn-ghost" onclick="cancelarEdicion()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Fragmento V1 -->
 <div class="card">
   <div class="card-header" style="border-left:4px solid #2563eb;">
@@ -80,7 +146,7 @@
       <thead>
         <tr>
           <th>#</th><th>Nombre</th><th>Ap. Paterno</th>
-          <th>Telefono</th><th>Email</th><th>Activo</th><th></th>
+          <th>Telefono</th><th>Email</th><th>Activo</th><th style="width:130px;"></th>
         </tr>
       </thead>
       <tbody>
@@ -99,9 +165,11 @@
             {% endif %}
           </td>
           <td>
+            <button class="btn btn-warning btn-sm" onclick="editarPaciente({{ p.id_paciente }})">&#x270F; Editar</button>
             <form method="POST" action="/pacientes/eliminar/{{ p.id_paciente }}"
-                  onsubmit="return confirm('Eliminar paciente #{{ p.id_paciente }} de los 3 nodos?')">
-              <button class="btn btn-danger btn-sm">Eliminar</button>
+                  onsubmit="return confirm('Eliminar paciente #{{ p.id_paciente }} de los 3 nodos?')"
+                  style="display:inline">
+              <button class="btn btn-danger btn-sm">&#x2716;</button>
             </form>
           </td>
         </tr>
@@ -169,7 +237,7 @@
     {% if v3 %}
     <table>
       <thead>
-        <tr><th>#</th><th>Sexo</th><th>Tipo sangre</th><th>Fecha registro</th><th>Activo</th></tr>
+        <tr><th>#</th><th>Sexo</th><th>Tipo sangre</th><th>Fecha registro</th><th>Activo</th><th style="width:130px;"></th></tr>
       </thead>
       <tbody>
         {% for p in v3 %}
@@ -192,6 +260,14 @@
             <span style="color:#991b1b; font-weight:700;">&#x2717;</span>
             {% endif %}
           </td>
+          <td>
+            <button class="btn btn-warning btn-sm" onclick="editarPaciente({{ p.id_paciente }})">&#x270F;</button>
+            <form method="POST" action="/pacientes/v3/eliminar/{{ p.id_paciente }}"
+                  onsubmit="return confirm('Eliminar PACIENTE_V3 #{{ p.id_paciente }} de Nodo 5?')"
+                  style="display:inline">
+              <button class="btn btn-danger btn-sm">&#x2716; N5</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -202,4 +278,31 @@
   </div>
 </div>
 
+<script>
+function editarPaciente(pid) {
+  fetch('/pacientes/datos/' + pid)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('edit-id-label').textContent = pid;
+      document.getElementById('edit-form').action = '/pacientes/editar/' + pid;
+      document.getElementById('edit-nombre').value = d.nombre || '';
+      document.getElementById('edit-apellido_p').value = d.apellido_p || '';
+      document.getElementById('edit-apellido_m').value = d.apellido_m || '';
+      document.getElementById('edit-telefono').value = d.telefono || '';
+      document.getElementById('edit-email').value = d.email || '';
+      document.getElementById('edit-fecha_nac').value = d.fecha_nac || '';
+      document.getElementById('edit-sexo').value = d.sexo || 'M';
+      document.getElementById('edit-tipo_sangre').value = d.tipo_sangre || '';
+      var a = d.activo == 1 || d.activo == '1';
+      document.getElementById('edit-activo_display').value = a ? '1' : '0';
+      document.getElementById('edit-activo').value = a ? '1' : '0';
+      document.getElementById('edit-card').style.display = 'block';
+      document.getElementById('edit-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    })
+    .catch(() => alert('Error al cargar datos del paciente'));
+}
+function cancelarEdicion() {
+  document.getElementById('edit-card').style.display = 'none';
+}
+</script>
 {% endblock %}
