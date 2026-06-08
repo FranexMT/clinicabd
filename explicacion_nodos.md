@@ -8,8 +8,8 @@ Hamachi. Las razones:
 
 | Problema del modelo centralizado | Solución distribuida |
 |----------------------------------|----------------------|
-| Un solo servidor = punto único de falla | Si un nodo cae, los demás siguen funcionando |
-| Todo el tráfico pasa por el mismo servidor | Cada nodo procesa sus consultas localmente |
+| Un solo servidor = punto único de falla | Cada nodo MySQL corre independientemente; si uno falla, los demás nodos y la app continúan operando con los datos disponibles |
+| Todo el tráfico pasa por el mismo servidor | Cada nodo procesa sus consultas localmente en su propia instancia MySQL |
 | Los datos clínicos viajan innecesariamente | Cada área tiene solo los datos que necesita |
 | Escalabilidad limitada | Podemos agregar más nodos sin reestructurar todo |
 
@@ -18,6 +18,25 @@ del paciente para agendar una cita, y farmacia no necesita el
 diagnóstico completo para surtir una receta. Distribuir los datos
 reduce el tráfico innecesario en la red y refleja la organización
 física de la clínica.
+
+### 1.1 Precisión sobre disponibilidad
+
+Es importante aclarar qué significa "si un nodo cae, los demás
+siguen funcionando":
+
+- Cada **instancia MySQL** corre de forma autónoma en su propia
+  máquina. Si la computadora de Axel se apaga, su Nodo 2 deja de
+  responder, pero los MySQL de Francisco, Elmer, Jorge y Oscar
+  siguen ejecutándose sin problema.
+- La **aplicación Flask** está diseñada para tolerar nodos caídos:
+  muestra el nodo en rojo y carga los datos de los nodos que sí
+  responden. Sin embargo, la información del nodo caído no está
+  disponible — por ejemplo, si N2 está caído, no se pueden ver los
+  datos clínicos de los pacientes.
+- Esto no es una tolerancia a fallos completa (cada nodo no replica
+  los datos de los demás), sino una **disponibilidad parcial** que
+  es precisamente lo que se espera de una base de datos fragmentada
+  vertical y horizontalmente.
 
 ---
 
@@ -78,7 +97,19 @@ Esto refleja el ciclo natural de una clínica real: las citas pasadas
 se facturan y analizan, las futuras se gestionan. La fecha del sistema
 es configurable y los fragmentos se ajustarían si el año cambiara.
 
-### 2.5 Verificación de completitud y disjunción
+### 2.5 Limitación de la fragmentación estática
+
+Los fragmentos de CITA usan valores fijos de año (2025 para
+completadas, 2026 para programadas). Esto significa que cuando
+el calendario avance a 2027, las citas programadas de 2027 no
+encajarían en ningún fragmento (los CHECK constraints las
+rechazarían). En un sistema productivo, los rangos se actualizarían
+periódicamente o se usaría fragmentación derivada con función en
+vez de valores literales. Para fines del proyecto académico, los
+rangos son suficientes y demuestran correctamente el concepto de
+fragmentación horizontal con COM-MIN.
+
+### 2.6 Verificación de completitud y disjunción
 
 **Completitud**: Cualquier cita en el sistema cae en exactamente uno
 de estos casos:
@@ -105,7 +136,7 @@ heterogéneos:
 |------|------------------------|---------------------------|
 | Recepción | nombre, teléfono, email | fecha_nac, tipo_sangre |
 | Médicos | fecha_nac, sexo, tipo_sangre, alergias | teléfono, email |
-| Reportes | sexo, tipo_sangre, activo | nombre, teléfono, email, dirección |
+| Reportes | sexo, tipo_sangre, activo | nombre, teléfono, email |
 
 Esta heterogeneidad justifica partir los atributos en fragmentos
 especializados, de modo que cada nodo tenga solo los datos que
