@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+from datetime import date, datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from db import query, execute, ping, ping_all
 from config import NODOS
@@ -9,8 +10,37 @@ from config import NODOS
 app = Flask(__name__)
 app.secret_key = "sgcm-secret-2026"
 
+def _serial(row):
+    """Convierte date/datetime/timedelta a strings compatibles con inputs HTML."""
+    out = {}
+    for k, v in row.items():
+        if isinstance(v, (date, datetime)):
+            out[k] = v.isoformat()[:10]          # YYYY-MM-DD
+        elif isinstance(v, timedelta):
+            total = int(v.total_seconds())
+            h, m = divmod(total // 60, 60)
+            out[k] = f"{h:02d}:{m:02d}"           # HH:MM
+        else:
+            out[k] = v
+    return out
+
 def estado_nodos():
     return ping_all()
+
+def _determinar_fragmento(estatus, fecha_str):
+    fecha_mes  = int(fecha_str[5:7])
+    fecha_anio = int(fecha_str[:4])
+    if estatus == "cancelada":
+        return 5, "CITA_F5"
+    if estatus == "completada" and fecha_anio == 2025 and fecha_mes <= 6:
+        return 3, "CITA_F3"
+    if estatus == "completada" and fecha_anio == 2025 and fecha_mes >= 7:
+        return 4, "CITA_F4"
+    if estatus == "programada" and fecha_anio == 2026 and fecha_mes <= 6:
+        return 1, "CITA_F1"
+    if estatus == "programada" and fecha_anio == 2026 and fecha_mes >= 7:
+        return 2, "CITA_F2"
+    return None, None
 
 @app.route("/")
 def index():
@@ -38,8 +68,8 @@ def paciente_agregar():
         ok1, _ = execute(1,
             "INSERT INTO PACIENTE_V1 (id_paciente, nombre, apellido_p, apellido_m, telefono, email, activo) "
             "VALUES (%s, %s, %s, %s, %s, %s, 1)",
-            (pid, f["nombre"], f["apellido_p"], f.get("apellido_m",""),
-             f.get("telefono",""), f.get("email",""))
+            (pid, f["nombre"], f["apellido_p"], f.get("apellido_m") or None,
+             f.get("telefono") or None, f.get("email") or None)
         )
         ok2, _ = execute(2,
             "INSERT INTO PACIENTE_V2 (id_paciente, nombre, apellido_p, apellido_m, fecha_nac, sexo, tipo_sangre, fecha_registro) "
@@ -84,7 +114,7 @@ def paciente_datos(pid):
     if v1: datos.update(v1[0])
     if v2: datos.update(v2[0])
     if v3: datos.update(v3[0])
-    return jsonify(datos)
+    return jsonify(_serial(datos))
 
 @app.route("/pacientes/editar/<int:pid>", methods=["POST"])
 def paciente_editar(pid):
@@ -92,8 +122,8 @@ def paciente_editar(pid):
     ok1, _ = execute(1,
         "UPDATE PACIENTE_V1 SET nombre=%s, apellido_p=%s, apellido_m=%s, "
         "telefono=%s, email=%s, activo=%s WHERE id_paciente=%s",
-        (f["nombre"], f["apellido_p"], f.get("apellido_m",""),
-         f.get("telefono",""), f.get("email",""), int(f.get("activo",1)), pid))
+        (f["nombre"], f["apellido_p"], f.get("apellido_m") or None,
+         f.get("telefono") or None, f.get("email") or None, int(f.get("activo",1)), pid))
     ok2, _ = execute(2,
         "UPDATE PACIENTE_V2 SET nombre=%s, apellido_p=%s, apellido_m=%s, "
         "fecha_nac=%s, sexo=%s, tipo_sangre=%s WHERE id_paciente=%s",
@@ -162,20 +192,39 @@ def cita_agregar():
 @app.route("/citas/datos/<int:nodo>/<int:cid>")
 def cita_datos(nodo, cid):
     rows = query(nodo, f"SELECT * FROM CITA_F{nodo} WHERE id_cita=%s", (cid,))
-    return jsonify(rows[0] if rows else {})
+    return jsonify(_serial(rows[0]) if rows else {})
 
 @app.route("/citas/editar/<int:nodo>/<int:cid>", methods=["POST"])
 def cita_editar(nodo, cid):
     f = request.form
-    ok, err = execute(nodo,
-        f"UPDATE CITA_F{nodo} SET id_paciente=%s, id_medico=%s, fecha_cita=%s, "
-        f"hora_cita=%s, motivo=%s, estatus=%s WHERE id_cita=%s",
-        (f["id_paciente"], f["id_medico"], f["fecha_cita"],
-         f["hora_cita"], f.get("motivo",""), f["estatus"], cid))
-    if ok:
-        flash(f"✓ Cita #{cid} actualizada en Nodo {nodo}", "success")
+    nuevo_nodo, nueva_tabla = _determinar_fragmento(
+        f["estatus"], f["fecha_cita"])
+
+    if nuevo_nodo is None:
+        flash("Fecha o estatus fuera del rango de los fragmentos definidos.", "danger")
+        return redirect(url_for("citas"))
+
+    if nuevo_nodo == nodo:
+        ok, err = execute(nodo,
+            f"UPDATE CITA_F{nodo} SET id_paciente=%s, id_medico=%s, fecha_cita=%s, "
+            f"hora_cita=%s, motivo=%s WHERE id_cita=%s",
+            (f["id_paciente"], f["id_medico"], f["fecha_cita"],
+             f["hora_cita"], f.get("motivo",""), cid))
+        if ok:
+            flash(f"✓ Cita #{cid} actualizada en Nodo {nodo}", "success")
+        else:
+            flash(f"✗ Error al actualizar cita #{cid}: {err}", "danger")
     else:
-        flash(f"✗ Error al actualizar cita #{cid}: {err}", "danger")
+        ok, _ = execute(nuevo_nodo,
+            f"INSERT INTO {nueva_tabla} (id_cita, id_paciente, id_medico, fecha_cita, hora_cita, motivo, estatus) "
+            f"VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (cid, f["id_paciente"], f["id_medico"], f["fecha_cita"],
+             f["hora_cita"], f.get("motivo",""), f["estatus"]))
+        execute(nodo, f"DELETE FROM CITA_F{nodo} WHERE id_cita=%s", (cid,))
+        if ok:
+            flash(f"✓ Cita #{cid} movida a Nodo {nuevo_nodo} ({nueva_tabla})", "success")
+        else:
+            flash(f"✗ Error al mover cita: {err}", "danger")
     return redirect(url_for("citas"))
 
 @app.route("/citas/eliminar/<int:nodo>/<int:cid>", methods=["POST"])
@@ -242,6 +291,87 @@ def medico_eliminar(id):
     flash(f"✓ Médico #{id} eliminado" if ok else f"✗ Error: {err}",
           "success" if ok else "danger")
     return redirect(url_for("medicos"))
+
+# CONSULTAS Y RECETAS
+@app.route("/consultas")
+def consultas():
+    consultas_ = query(2, "SELECT * FROM CONSULTA ORDER BY fecha_consulta DESC")
+    recetas    = query(2, "SELECT * FROM RECETA ORDER BY fecha_emision DESC")
+    detalles   = query(3, """
+        SELECT dr.id_detalle, dr.id_receta, dr.id_medicamento,
+               m.nombre AS medicamento, m.presentacion,
+               dr.cantidad, dr.duracion_dias, dr.dispensado
+        FROM DETALLE_RECETA dr
+        JOIN MEDICAMENTO m ON m.id_medicamento = dr.id_medicamento
+        ORDER BY dr.id_receta, dr.id_detalle
+    """)
+    medicamentos = query(3, "SELECT id_medicamento, nombre, presentacion FROM MEDICAMENTO ORDER BY nombre")
+    estado = estado_nodos()
+    return render_template("consultas.html",
+                           consultas=consultas_, recetas=recetas,
+                           detalles=detalles, medicamentos=medicamentos,
+                           estado=estado, nodos=NODOS)
+
+@app.route("/consultas/agregar", methods=["POST"])
+def consulta_agregar():
+    f = request.form
+    ok, err = execute(2,
+        "INSERT INTO CONSULTA (id_cita, diagnostico, observaciones, fecha_consulta) "
+        "VALUES (%s, %s, %s, %s)",
+        (f["id_cita"], f["diagnostico"], f.get("observaciones",""), f["fecha_consulta"]))
+    flash("✓ Consulta registrada en Nodo 2" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("consultas"))
+
+@app.route("/consultas/eliminar/<int:cid>", methods=["POST"])
+def consulta_eliminar(cid):
+    ok, err = execute(2, "DELETE FROM CONSULTA WHERE id_consulta=%s", (cid,))
+    flash(f"✓ Consulta #{cid} eliminada" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("consultas"))
+
+@app.route("/recetas/agregar", methods=["POST"])
+def receta_agregar():
+    f = request.form
+    ok, err = execute(2,
+        "INSERT INTO RECETA (id_consulta, fecha_emision, indicaciones) VALUES (%s, %s, %s)",
+        (f["id_consulta"], f["fecha_emision"], f.get("indicaciones","")))
+    flash("✓ Receta creada en Nodo 2" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("consultas"))
+
+@app.route("/recetas/eliminar/<int:rid>", methods=["POST"])
+def receta_eliminar(rid):
+    execute(2, "DELETE FROM DETALLE_RECETA WHERE id_receta=%s", (rid,))
+    execute(3, "DELETE FROM DETALLE_RECETA WHERE id_receta=%s", (rid,))
+    ok, err = execute(2, "DELETE FROM RECETA WHERE id_receta=%s", (rid,))
+    flash(f"✓ Receta #{rid} eliminada" if ok else f"✗ Error: {err}",
+          "success" if ok else "danger")
+    return redirect(url_for("consultas"))
+
+@app.route("/recetas/detalle/agregar", methods=["POST"])
+def detalle_agregar():
+    f = request.form
+    params = (f["id_receta"], f["id_medicamento"],
+              int(f["cantidad"]), f.get("duracion_dias") or None)
+    ok2, _ = execute(2,
+        "INSERT INTO DETALLE_RECETA (id_receta, id_medicamento, cantidad, duracion_dias) "
+        "VALUES (%s, %s, %s, %s)", params)
+    ok3, _ = execute(3,
+        "INSERT INTO DETALLE_RECETA (id_receta, id_medicamento, cantidad, duracion_dias, dispensado) "
+        "VALUES (%s, %s, %s, %s, 0)", params)
+    if ok2 and ok3:
+        flash("✓ Medicamento agregado — aparece en Farmacia pendiente de dispensar", "success")
+    else:
+        flash("✗ Error al agregar medicamento a receta", "danger")
+    return redirect(url_for("consultas"))
+
+@app.route("/recetas/detalle/eliminar/<int:did>", methods=["POST"])
+def detalle_eliminar(did):
+    execute(2, "DELETE FROM DETALLE_RECETA WHERE id_detalle=%s", (did,))
+    execute(3, "DELETE FROM DETALLE_RECETA WHERE id_detalle=%s", (did,))
+    flash(f"✓ Medicamento #{did} eliminado de receta", "success")
+    return redirect(url_for("consultas"))
 
 # FARMACIA
 @app.route("/farmacia")

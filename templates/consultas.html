@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-title">Consultas y Recetas</div>
+<div class="page-subtitle">Nodo 2 &mdash; Expedientes clinicos y prescripciones medicas</div>
+
+<!-- ── FORM: Nueva consulta ── -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #10b981;">
+    <span>
+      <span style="font-size:.7rem;font-weight:700;background:#d1fae5;color:#065f46;
+                   padding:.12rem .5rem;border-radius:4px;margin-right:.5rem;">NODO 2</span>
+      Registrar consulta medica
+    </span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/consultas/agregar">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ID Cita</label>
+          <input type="number" name="id_cita" required min="1">
+        </div>
+        <div class="form-group">
+          <label>Fecha consulta</label>
+          <input type="date" name="fecha_consulta" required>
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Diagnostico</label>
+          <input type="text" name="diagnostico" required placeholder="ej. Hipertension arterial grado 1">
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Observaciones</label>
+          <input type="text" name="observaciones" placeholder="ej. Iniciar tratamiento con losartan 50mg">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-success">&#x2B; Registrar consulta</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── FORM: Nueva receta ── -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #10b981;">
+    <span>
+      <span style="font-size:.7rem;font-weight:700;background:#d1fae5;color:#065f46;
+                   padding:.12rem .5rem;border-radius:4px;margin-right:.5rem;">NODO 2</span>
+      Emitir receta medica
+    </span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/recetas/agregar">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ID Consulta</label>
+          <input type="number" name="id_consulta" required min="1">
+        </div>
+        <div class="form-group">
+          <label>Fecha emision</label>
+          <input type="date" name="fecha_emision" required>
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Indicaciones generales</label>
+          <input type="text" name="indicaciones" placeholder="ej. Tomar con alimentos, reposo relativo">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-success">&#x2B; Emitir receta</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── FORM: Agregar medicamento a receta ── -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #f97316;">
+    <span>
+      <span style="font-size:.7rem;font-weight:700;background:#ffedd5;color:#9a3412;
+                   padding:.12rem .5rem;border-radius:4px;margin-right:.5rem;">NODO 2 + 3</span>
+      Agregar medicamento a receta &rarr; Farmacia
+    </span>
+    <span class="ch-sub">Se escribe en Nodo 2 y Nodo 3 simultaneamente</span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/recetas/detalle/agregar">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ID Receta</label>
+          <input type="number" name="id_receta" required min="1">
+        </div>
+        <div class="form-group">
+          <label>Medicamento</label>
+          <select name="id_medicamento" required>
+            <option value="">-- Seleccionar --</option>
+            {% for m in medicamentos %}
+            <option value="{{ m.id_medicamento }}">{{ m.nombre }} &mdash; {{ m.presentacion }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input type="number" name="cantidad" required min="1">
+        </div>
+        <div class="form-group">
+          <label>Duracion (dias)</label>
+          <input type="number" name="duracion_dias" min="1" placeholder="opcional">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-orange">&#x1F48A; Agregar a receta</button>
+        <span class="form-hint">Aparecera automaticamente en Farmacia como pendiente de dispensar.</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── TABLA: Consultas ── -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #10b981;">
+    <span>
+      <span style="font-size:.7rem;font-weight:700;background:#d1fae5;color:#065f46;
+                   padding:.12rem .5rem;border-radius:4px;margin-right:.5rem;">NODO 2</span>
+      Consultas registradas
+    </span>
+    <span class="ch-sub">{{ consultas|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    {% if consultas %}
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Cita</th><th>Fecha</th><th>Diagnostico</th><th>Observaciones</th><th style="width:80px;"></th></tr>
+      </thead>
+      <tbody>
+        {% for c in consultas %}
+        <tr>
+          <td style="font-weight:600;color:#64748b;">#{{ c.id_consulta }}</td>
+          <td>#{{ c.id_cita }}</td>
+          <td>{{ c.fecha_consulta }}</td>
+          <td style="font-weight:500;">{{ c.diagnostico }}</td>
+          <td style="color:#64748b;font-size:.82rem;">{{ c.observaciones or '&mdash;' }}</td>
+          <td>
+            <form method="POST" action="/consultas/eliminar/{{ c.id_consulta }}"
+                  onsubmit="return confirm('Eliminar consulta #{{ c.id_consulta }}?')" style="display:inline">
+              <button class="btn btn-danger btn-sm">&#x2716;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 2 no disponible o sin consultas.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── TABLA: Recetas ── -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #10b981;">
+    <span>
+      <span style="font-size:.7rem;font-weight:700;background:#d1fae5;color:#065f46;
+                   padding:.12rem .5rem;border-radius:4px;margin-right:.5rem;">NODO 2</span>
+      Recetas emitidas
+    </span>
+    <span class="ch-sub">{{ recetas|length }} recetas</span>
+  </div>
+  <div class="table-wrap">
+    {% if recetas %}
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Consulta</th><th>Fecha emision</th><th>Indicaciones</th><th style="width:80px;"></th></tr>
+      </thead>
+      <tbody>
+        {% for r in recetas %}
+        <tr>
+          <td style="font-weight:600;color:#64748b;">#{{ r.id_receta }}</td>
+          <td>#{{ r.id_consulta }}</td>
+          <td>{{ r.fecha_emision }}</td>
+          <td style="color:#64748b;font-size:.82rem;">{{ r.indicaciones or '&mdash;' }}</td>
+          <td>
+            <form method="POST" action="/recetas/eliminar/{{ r.id_receta }}"
+                  onsubmit="return confirm('Eliminar receta #{{ r.id_receta }} y sus medicamentos?')" style="display:inline">
+              <button class="btn btn-danger btn-sm">&#x2716;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Nodo 2 no disponible o sin recetas.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── TABLA: Detalle de recetas (medicamentos) ── -->
+<div class="card">
+  <div class="card-header" style="border-left:4px solid #f97316;">
+    <span>
+      <span style="font-size:.7rem;font-weight:700;background:#ffedd5;color:#9a3412;
+                   padding:.12rem .5rem;border-radius:4px;margin-right:.5rem;">NODO 3</span>
+      Medicamentos por receta
+    </span>
+    <span class="ch-sub">{{ detalles|length }} items</span>
+  </div>
+  <div class="table-wrap">
+    {% if detalles %}
+    <table>
+      <thead>
+        <tr><th>Detalle</th><th>Receta</th><th>Medicamento</th><th>Presentacion</th>
+            <th>Cantidad</th><th>Dias</th><th>Estado</th><th style="width:80px;"></th></tr>
+      </thead>
+      <tbody>
+        {% for d in detalles %}
+        <tr>
+          <td style="font-weight:600;color:#64748b;">#{{ d.id_detalle }}</td>
+          <td>#{{ d.id_receta }}</td>
+          <td style="font-weight:500;">{{ d.medicamento }}</td>
+          <td style="color:#64748b;font-size:.82rem;">{{ d.presentacion }}</td>
+          <td style="font-weight:600;">{{ d.cantidad }}</td>
+          <td>{{ d.duracion_dias or '&mdash;' }}</td>
+          <td>
+            {% if d.dispensado %}
+            <span class="badge badge-comp">Dispensado</span>
+            {% else %}
+            <span class="badge badge-pend">Pendiente</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="POST" action="/recetas/detalle/eliminar/{{ d.id_detalle }}"
+                  onsubmit="return confirm('Eliminar medicamento de receta?')" style="display:inline">
+              <button class="btn btn-danger btn-sm">&#x2716;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><span>&#x1F4E1;</span>Sin medicamentos registrados.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
